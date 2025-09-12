@@ -192,3 +192,18 @@ index 0868a2a..f884cfb 100644
 -  arch-chroot
 +  flarebird-chroot
  fi
+diff --git a/pacstrap.in b/pacstrap.in
+index 434bcf7..0122d69 100644
+--- a/pacstrap.in
++++ b/pacstrap.in
+@@ -53,9 +53,9 @@ pacstrap() {
+   # create obligatory directories
+   msg 'Creating install root at %s' "$newroot"
+   # shellcheck disable=SC2174 # permissions are perfectly fine here
+-  mkdir -m 0755 -p "$newroot"/var/{cache/pacman/pkg,lib/pacman,log} "$newroot"/{dev,run,etc/pacman.d}
++  mkdir -m 0755 -p "$newroot"/var/{cache/pacman/pkg,lib/pacman,log} "$newroot"/{dev,etc/pacman.d}
+   # shellcheck disable=SC2174 # permissions are perfectly fine here
+-  mkdir -m 1777 -p "$newroot"/tmp
++  mkdir -m 1777 -p "$newroot"/{run,tmp}
+   # shellcheck disable=SC2174 # permissions are perfectly fine here
+   mkdir -m 0555 -p "$newroot"/{sys,proc}
