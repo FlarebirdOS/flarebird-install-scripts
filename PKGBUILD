@@ -1,6 +1,6 @@
 pkgname=flarebird-install-scripts
-pkgver=29
-pkgrel=2
+pkgver=31
+pkgrel=3
 pkgdesc="Scripts to aid in installing Flarebird Linux"
 arch=('x86_64')
 url="https://gitlab.archlinux.org/archlinux/arch-install-scripts"
@@ -9,30 +9,32 @@ depends=(
     'gawk'
     'bash'
     'coreutils'
+    'git'
     'grep'
     'pacman'
+    'rsync'
     'util-linux'
 )
 makedepends=('python-asciidoc')
-source=(https://gitlab.archlinux.org/archlinux/arch-install-scripts/-/archive/v${pkgver}/arch-install-scripts-v${pkgver}.tar.gz
+source=(git+https://gitlab.archlinux.org/archlinux/arch-install-scripts#tag=v${pkgver}
     flarebird-install-scripts.patch)
-sha256sums=(9b39bcb93e0e104e14d3cfa60a094d35e76d39276af3aeac69620a89f71abfc7
-    0e6f728910eab20043b6a92912030e464668c180a8230bcbe2424995fc7602e9)
+sha256sums=(77b4f4eb96ecb6031e3ed0ff4c68de1fbeb28deae9615cfe91e2632c1fe629e2
+    93cf335c8f88d1048caa7980f31e1f17666ae28c7aac1778ec1853479271e572)
 
 prepare() {
-    cd arch-install-scripts-v${pkgver}
+    cd arch-install-scripts
 
-    patch -Np1 -i ${srcdir}/flarebird-install-scripts.patch
+    git apply -3 ${srcdir}/flarebird-install-scripts.patch
 }
 
 build() {
-    cd arch-install-scripts-v${pkgver}
+    cd arch-install-scripts
 
     make CC="${CHOST}-gcc"
 }
 
 package() {
-    cd arch-install-scripts-v${pkgver}
+    cd arch-install-scripts
 
     make DESTDIR=${pkgdir} PREFIX=/usr  install
 }

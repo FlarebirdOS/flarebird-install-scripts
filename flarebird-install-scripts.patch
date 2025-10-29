@@ -1,38 +1,38 @@
 diff --git a/Makefile b/Makefile
-index d2928a5..29d67bc 100644
+index d2928a5..473797c 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1,14 +1,14 @@
 -VER=26
-+VER=29
-
++VER=31
+ 
 -PREFIX = /usr/local
 +PREFIX = /usr
-
+ 
  BINPROGS = \
 -	arch-chroot \
 +	flarebird-chroot \
  	genfstab \
  	pacstrap
-
+ 
  MANS = \
 -	doc/arch-chroot.8 \
 +	doc/flarebird-chroot.8 \
  	doc/genfstab.8 \
  	doc/pacstrap.8
-
+ 
 @@ -25,7 +25,7 @@ _v_GEN_0 = @echo "  GEN     " $@;
-
+ 
  edit = $(V_GEN) m4 -P $@.in >$@ && chmod go-w,+x $@
-
+ 
 -arch-chroot: arch-chroot.in common
 +flarebird-chroot: flarebird-chroot.in common
  	$(edit)
-
+ 
  genfstab: genfstab.in fstab-helpers
 @@ -49,8 +49,8 @@ shellcheck: $(BINPROGS)
  	shellcheck -W 99 --color -x test/test_*
-
+ 
  install: all
 -	install -d $(DESTDIR)$(PREFIX)/bin
 -	install -m 0755 $(BINPROGS) $(DESTDIR)$(PREFIX)/bin
@@ -42,13 +42,13 @@ index d2928a5..29d67bc 100644
  	install -m 0644 $(ZSHCOMP) $(DESTDIR)$(PREFIX)/share/zsh/site-functions
  	install -d $(DESTDIR)$(PREFIX)/share/bash-completion/completions
 diff --git a/common b/common
-index ced125b..b6397ed 100644
+index dc00116..3eef52b 100644
 --- a/common
 +++ b/common
-@@ -29,15 +29,14 @@ chroot_setup() {
-   [[ $(trap -p EXIT) ]] && die '(BUG): attempting to overwrite existing EXIT trap'
-   trap 'chroot_teardown' EXIT
-
+@@ -50,15 +50,14 @@ chroot_teardown() {
+ }
+ 
+ chroot_setup() {
 -  chroot_add_mount proc "$1/proc" -t proc -o nosuid,noexec,nodev &&
 -  chroot_add_mount sys "$1/sys" -t sysfs -o nosuid,noexec,nodev,ro &&
 +  chroot_add_mount proc "$1/proc" -t proc &&
@@ -66,11 +66,11 @@ index ced125b..b6397ed 100644
 +  chroot_add_mount tmpfs "$1/dev/shm" -t tmpfs -o nosuid,nodev &&
 +  chroot_add_mount tmpfs "$1/run" -t tmpfs -o mode=1777
  }
-
- chroot_teardown() {
-@@ -68,8 +67,8 @@ unshare_setup() {
-   trap 'unshare_teardown' EXIT
-
+ 
+ chroot_add_mount_lazy() {
+@@ -76,8 +75,8 @@ chroot_add_link() {
+ 
+ unshare_setup() {
    chroot_add_mount_lazy "$1" "$1" --bind &&
 -  chroot_add_mount proc "$1/proc" -t proc -o nosuid,noexec,nodev &&
 -  chroot_add_mount_lazy /sys "$1/sys" --rbind &&
@@ -79,7 +79,7 @@ index ced125b..b6397ed 100644
    chroot_add_link /proc/self/fd "$1/dev/fd" &&
    chroot_add_link /proc/self/fd/0 "$1/dev/stdin" &&
    chroot_add_link /proc/self/fd/1 "$1/dev/stdout" &&
-@@ -80,8 +79,7 @@ unshare_setup() {
+@@ -88,8 +87,7 @@ unshare_setup() {
    chroot_bind_device /dev/tty "$1/dev/tty" &&
    chroot_bind_device /dev/urandom "$1/dev/urandom" &&
    chroot_bind_device /dev/zero "$1/dev/zero" &&
@@ -87,8 +87,8 @@ index ced125b..b6397ed 100644
 -  chroot_add_mount tmp "$1/tmp" -t tmpfs -o mode=1777,strictatime,nodev,nosuid
 +  chroot_add_mount tmpfs "$1/run" -t tmpfs -o mode=1777
  }
-
- unshare_teardown() {
+ 
+ pid_unshare="unshare --fork --pid"
 diff --git a/completion/bash/arch-chroot b/completion/bash/flarebird-chroot
 similarity index 86%
 rename from completion/bash/arch-chroot
@@ -105,7 +105,7 @@ index de53d92..77d2382 100644
 @@ -22,4 +22,4 @@ _arch_chroot() {
      compopt -o dirnames
  }
-
+ 
 -complete -F _arch_chroot arch-chroot
 +complete -F _flarebird_chroot flarebird-chroot
 diff --git a/completion/zsh/_arch-chroot b/completion/zsh/_flarebird-chroot
@@ -118,14 +118,14 @@ index 6229af8..a1879e9 100644
 @@ -1,4 +1,4 @@
 -#compdef arch-chroot
 +#compdef flarebird-chroot
-
+ 
  # NOTE: nearly everything here is borrowed from the chroot completion
  local -a args=(
 diff --git a/doc/arch-chroot.8.asciidoc b/doc/flarebird-chroot.8.asciidoc
-similarity index 77%
+similarity index 80%
 rename from doc/arch-chroot.8.asciidoc
 rename to doc/flarebird-chroot.8.asciidoc
-index 5f3f27c..a83344a 100644
+index ae09b64..834dd5f 100644
 --- a/doc/arch-chroot.8.asciidoc
 +++ b/doc/flarebird-chroot.8.asciidoc
 @@ -1,21 +1,21 @@
@@ -133,57 +133,68 @@ index 5f3f27c..a83344a 100644
 -==============
 +flarebird-chroot(8)
 +===================
-
+ 
  Name
  ----
 -arch-chroot - enhanced chroot command
 +flarebird-chroot - enhanced chroot command
-
+ 
  Synopsis
  --------
 -arch-chroot [options] chroot-dir [command] [arguments...]
 +flarebird-chroot [options] chroot-dir [command] [arguments...]
-
+ 
  Description
  -----------
 -arch-chroot wraps the linkman:chroot[1] command while ensuring that important
 +flarebird-chroot wraps the linkman:chroot[1] command while ensuring that important
  functionality is available, e.g. mounting '/dev/', '/proc' and other API
  filesystems, or exposing linkman:resolv.conf[5] to the chroot.
-
+ 
 -If 'command' is unspecified, arch-chroot will launch */bin/bash*.
 +If 'command' is unspecified, flarebird-chroot will launch */bin/bash*.
-
+ 
  [NOTE]
  ======
 diff --git a/arch-chroot.in b/flarebird-chroot.in
-similarity index 94%
+similarity index 93%
 rename from arch-chroot.in
 rename to flarebird-chroot.in
-index 0868a2a..f884cfb 100644
+index 7750258..6a75c15 100644
 --- a/arch-chroot.in
 +++ b/flarebird-chroot.in
-@@ -19,7 +19,7 @@ usage: ${0##*/} chroot-dir [command] [arguments...]
-
+@@ -21,7 +21,7 @@ usage: ${0##*/} chroot-dir [command] [arguments...]
+ 
  If 'command' is unspecified, ${0##*/} will launch /bin/bash.
-
+ 
 -Note that when using arch-chroot, the target chroot directory *should* be a
 +Note that when using flarebird-chroot, the target chroot directory *should* be a
  mountpoint. This ensures that tools such as pacman(8) or findmnt(8) have an
  accurate hierarchy of the mounted filesystems within the chroot.
-
-@@ -65,7 +65,7 @@ chroot_add_resolv_conf() {
-   chroot_add_mount "$src" "$dest" -c --bind
+ 
+@@ -74,8 +74,8 @@ systemd_mode() {
+     [[ $user ]] || die 'Invalid -u argument: %s' "$userspec"
+   fi
+ 
+-  sd_args=(systemd-run --unit="arch-chroot-$$_$(systemd-escape --path "$chrootdir")"
+-                       --description="[arch-chroot] $chrootdir (as $user)"
++  sd_args=(systemd-run --unit="flarebird-chroot-$$_$(systemd-escape --path "$chrootdir")"
++                       --description="[flarebird-chroot] $chrootdir (as $user)"
+                        --service-type=exec --collect
+                        --pty --pipe --send-sighup
+                        --expand-environment=no
+@@ -110,7 +110,7 @@ offline_mode() {
+   SHELL=/bin/bash SYSTEMD_IN_CHROOT=1 $pid_unshare chroot "${chroot_args[@]}" -- "$chrootdir" "${args[@]}"
  }
-
+ 
 -arch-chroot() {
 +flarebird-chroot() {
    (( EUID == 0 )) || die 'This script must be run with root privileges'
-
+ 
    [[ -d $chrootdir ]] || die "Can't create chroot on non-directory %s" "$chrootdir"
-@@ -117,8 +117,8 @@ shift
- args=("$@")
- if (( unshare )); then
+@@ -170,8 +170,8 @@ if (( unshare )); then
+   fi
+ 
    setup=unshare_setup
 -  $mount_unshare bash -c "$(declare_all); arch-chroot"
 +  $mount_unshare bash -c "$(declare_all); flarebird-chroot"
@@ -193,17 +204,19 @@ index 0868a2a..f884cfb 100644
 +  flarebird-chroot
  fi
 diff --git a/pacstrap.in b/pacstrap.in
-index 434bcf7..0122d69 100644
+index 331eedd..6300860 100644
 --- a/pacstrap.in
 +++ b/pacstrap.in
-@@ -53,9 +53,9 @@ pacstrap() {
-   # create obligatory directories
-   msg 'Creating install root at %s' "$newroot"
+@@ -78,9 +78,10 @@ pacstrap() {
+     mkdir -m 0755 -p "$newroot/$path"
+   done
    # shellcheck disable=SC2174 # permissions are perfectly fine here
--  mkdir -m 0755 -p "$newroot"/var/{cache/pacman/pkg,lib/pacman,log} "$newroot"/{dev,run,etc/pacman.d}
-+  mkdir -m 0755 -p "$newroot"/var/{cache/pacman/pkg,lib/pacman,log} "$newroot"/{dev,etc/pacman.d}
+-  mkdir -m 0555 -p "$newroot"/{run,dev,sys,proc}
++  mkdir -m 0755 -p "$newroot"/dev
++  mkdir -m 0555 -p "$newroot"/{sys,proc}
    # shellcheck disable=SC2174 # permissions are perfectly fine here
 -  mkdir -m 1777 -p "$newroot"/tmp
-+  mkdir -m 1777 -p "$newroot"/{run,tmp}
-   # shellcheck disable=SC2174 # permissions are perfectly fine here
-   mkdir -m 0555 -p "$newroot"/{sys,proc}
++  mkdir -m 1777 -p "$newroot"/{tmp,run}
+ 
+   if (( ! hostcache )); then
+     for path in "${cache_dirs[@]}"; do
